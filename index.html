@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Mini App</title>
+    <title>White Symbol - Telegram Mini App</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Firebase SDK -->
     <script type="module">
@@ -45,9 +45,114 @@
             padding-bottom: 80px;
         }
         
+        /* Loading Screen Styles */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+        
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loading-logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #34aadc, #0088cc);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .loading-text {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #fff;
+            text-align: center;
+        }
+        
+        .loading-progress-container {
+            width: 80%;
+            max-width: 300px;
+            height: 12px;
+            background: #333;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .loading-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #34aadc, #0088cc);
+            border-radius: 6px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .loading-percentage {
+            font-size: 1rem;
+            color: #34aadc;
+            font-weight: bold;
+        }
+        
+        .loading-dots {
+            display: flex;
+            margin-top: 20px;
+        }
+        
+        .loading-dot {
+            width: 8px;
+            height: 8px;
+            background: #34aadc;
+            border-radius: 50%;
+            margin: 0 5px;
+            animation: loadingDot 1.5s infinite ease-in-out;
+        }
+        
+        .loading-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .loading-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes loadingDot {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.5);
+                opacity: 0.7;
+            }
+        }
+        
         .container {
             max-width: 100%;
             padding: 20px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .container.loaded {
+            opacity: 1;
         }
         
         header {
@@ -800,6 +905,21 @@
     </style>
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-logo">WS</div>
+        <div class="loading-text">White Symbol</div>
+        <div class="loading-progress-container">
+            <div class="loading-progress-bar" id="loadingProgressBar"></div>
+        </div>
+        <div class="loading-percentage" id="loadingPercentage">0%</div>
+        <div class="loading-dots">
+            <div class="loading-dot"></div>
+            <div class="loading-dot"></div>
+            <div class="loading-dot"></div>
+        </div>
+    </div>
+    
     <div class="notification" id="notification"></div>
     
     <!-- Delete Account Modal -->
@@ -814,9 +934,9 @@
         </div>
     </div>
     
-    <div class="container">
+    <div class="container" id="appContainer">
         <header>
-            <h1>White Symbol </h1>
+            <h1>White Symbol</h1>
             <p class="subtitle">Start from zero and build your rewards</p>
             <button class="settings-btn" id="settingsBtn">
                 <i class="fas fa-cog"></i>
@@ -1102,6 +1222,39 @@
             }
         ];
 
+        // Loading system
+        let loadingProgress = 0;
+        const loadingSteps = [
+            { name: 'Initializing app', progress: 10 },
+            { name: 'Connecting to database', progress: 25 },
+            { name: 'Loading user data', progress: 50 },
+            { name: 'Setting up UI', progress: 75 },
+            { name: 'Finalizing', progress: 90 },
+            { name: 'Ready', progress: 100 }
+        ];
+
+        function updateLoadingProgress(stepIndex) {
+            if (stepIndex >= loadingSteps.length) return;
+            
+            const step = loadingSteps[stepIndex];
+            loadingProgress = step.progress;
+            
+            document.getElementById('loadingProgressBar').style.width = `${loadingProgress}%`;
+            document.getElementById('loadingPercentage').textContent = `${loadingProgress}%`;
+            
+            // Simulate loading time for each step
+            setTimeout(() => {
+                updateLoadingProgress(stepIndex + 1);
+            }, 500);
+        }
+
+        function finishLoading() {
+            setTimeout(() => {
+                document.getElementById('loadingScreen').classList.add('hidden');
+                document.getElementById('appContainer').classList.add('loaded');
+            }, 500);
+        }
+
         // Firebase functions
         async function getUserData(userId) {
             try {
@@ -1158,6 +1311,9 @@
         // Initialize the app with Firebase
         async function initApp() {
             try {
+                // Start loading progress
+                updateLoadingProgress(0);
+                
                 // Wait for Firebase to be available
                 await waitForFirebase();
                 
@@ -1170,10 +1326,14 @@
                 await updateSettingsToggles();
                 await loadTasks();
                 
+                // Finish loading
+                finishLoading();
+                
                 showNotification('App loaded successfully!');
             } catch (error) {
                 console.error('Error initializing app:', error);
                 showNotification('Error loading app data');
+                finishLoading();
             }
         }
 
@@ -1737,8 +1897,8 @@
 
         // Initialize the app when Firebase is ready
         document.addEventListener('DOMContentLoaded', function() {
-            // Wait a bit for Firebase to initialize
-            setTimeout(initApp, 1000);
+            // Start the app initialization
+            initApp();
         });
     </script>
 </body>
